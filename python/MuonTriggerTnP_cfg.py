@@ -63,6 +63,7 @@ else:
 process.maxEvents = cms.untracked.PSet(input = cms.untracked.int32(options.maxEvents))
 
 
+# Trigger selection
 process.triggerFilter = cms.EDFilter('HLTHighLevel',
     HLTPaths = cms.vstring('HLT_IsoMu24_v*', 'HLT_IsoTkMu24_v*'),
     TriggerResultsTag = cms.InputTag('TriggerResults', '', options.triggerProcessName),
@@ -71,3 +72,56 @@ process.triggerFilter = cms.EDFilter('HLTHighLevel',
 )
 process.p += process.triggerFilter
 
+
+# Create collection of good muons and select events with exactly two
+# such muons.  They will be used as probes.
+process.pvFilter = cms.EDFilter('PrimaryVertexObjectFilter',
+    src = cms.InputTag('offlineSlimmedPrimaryVertices'),
+    filterParams = cms.PSet(
+        minNdof = cms.double(4.),
+        maxZ = cms.double(24.),
+        maxRho = cms.double(2.)
+    )
+)
+process.goodMuons = cms.EDFilter('MuonSelectorWithID',
+    src = cms.InputTag('slimmedMuons'),
+    cut = cms.string('pt > 20. & abs(eta) < 2.4'),
+    maxRelIso = cms.double(0.15),
+    passID = cms.string('tight'),
+    primaryVertices = cms.InputTag('offlineSlimmedPrimaryVertices')
+)
+process.countGoodMuons = cms.EDFilter('PATCandViewCountFilter',
+    src = cms.InputTag('goodMuons'),
+    minNumber = cms.uint32(2),
+    maxNumber = cms.uint32(2)
+)
+process.p += process.pvFilter + process.countGoodMuons
+
+
+# Define probes and tags.  Probes are just a copy of good muons, which
+# is needed as subsequent modules expect a collection of references
+# rather than actual muons.
+process.probes = cms.EDFilter('PATMuonRefSelector',
+    src = cms.InputTag('goodMuons'),
+    cut = cms.string('')
+)
+process.tags = cms.EDProducer('PatMuonTriggerCandProducer',
+    bits = cms.InputTag('TriggerResults', '', options.triggerProcessName),
+    dR = cms.double(0.3),
+    filterNames = cms.vstring(
+        'hltL3crIsoL1sMu22L1f0L2f10QL3f24QL3trkIsoFiltered0p09',
+        'hltL3fL1sMu22L1f0Tkf24QL3trkIsoFiltered0p09'
+    ),
+    inputs = cms.InputTag('probes'),
+    isAND = cms.bool(False),  # at least one of the filters
+    objects = cms.InputTag('selectedPatTrigger')
+)
+
+
+# Build tag-probe pairs
+process.tagProbePairs = cms.EDProducer('CandViewShallowCloneCombiner',
+    checkCharge = cms.bool(True),
+    cut = cms.string('60. < mass < 120.'),
+    decay = cms.string('tags@+ probes@-')
+)
+process.p += process.tagProbePairs
