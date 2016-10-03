@@ -2,28 +2,25 @@
 *.slo
 *.lo
 *.o
-*.obj
-
-# Precompiled Headers
-*.gch
-*.pch
 
 # Compiled Dynamic libraries
 *.so
 *.dylib
-*.dll
-
-# Fortran module files
-*.mod
-*.smod
 
 # Compiled Static libraries
 *.lai
 *.la
 *.a
-*.lib
 
-# Executables
-*.exe
-*.out
-*.app
+# Python precompiled files
+*.pyc
+
+# CMSSW-specific auxiliary files
+__init__.py
+
+# ROOT files from test runs
+/*.root
+
+# Files with notes
+*.txt
+*.tar.gz
